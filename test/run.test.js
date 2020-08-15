@@ -244,6 +244,23 @@ test('run should callback with an error using expectBody and requests', (t) => {
   })
 })
 
+test('run should callback with an error using expectResponse and requests', (t) => {
+  t.plan(2)
+
+  run(
+    {
+      url: 'http://localhost:' + server.address().port,
+      requests: [{ body: 'something' }],
+      expectResponse: () => false
+    },
+    function (err, result) {
+      t.ok(err, 'expectResponse used with requests should cause an error')
+      t.notOk(result, 'results should not exist')
+      t.end()
+    }
+  )
+})
+
 test('run should allow users to enter timestrings to be used for duration', (t) => {
   t.plan(3)
 
@@ -292,6 +309,24 @@ test('run should produce count of mismatches with expectBody set', (t) => {
   })
 })
 
+test('run should produce count of response mismatches with expectResponse set', (t) => {
+  t.plan(2)
+
+  run(
+    {
+      url: 'http://localhost:' + server.address().port,
+      expectResponse: ({ body }) => body === 'body will not be this',
+      maxOverallRequests: 10,
+      timeout: 100
+    },
+    function (err, result) {
+      t.error(err)
+      t.equal(result.mismatches, 10)
+      t.end()
+    }
+  )
+})
+
 test('run should produce 0 mismatches with expectBody set and matches', (t) => {
   t.plan(2)
 
@@ -307,6 +342,26 @@ test('run should produce 0 mismatches with expectBody set and matches', (t) => {
     t.equal(result.mismatches, 0)
     t.end()
   })
+})
+
+test('run should produce 0 mismatches with expectResponse set and matches', (t) => {
+  t.plan(2)
+
+  const responseBody = 'hello dave'
+  const server = helper.startServer({ body: responseBody })
+
+  run(
+    {
+      url: 'http://localhost:' + server.address().port,
+      expectResponse: ({ body }) => body === responseBody,
+      maxOverallRequests: 10
+    },
+    function (err, result) {
+      t.error(err)
+      t.equal(result.mismatches, 0)
+      t.end()
+    }
+  )
 })
 
 test('run should accept a unix socket/windows pipe', (t) => {
@@ -507,6 +562,27 @@ test('tracker will emit reqMismatch when body does not match expectBody', (t) =>
   tracker.once('reqMismatch', (bodyStr) => {
     t.equal(bodyStr, responseBody)
     t.notEqual(bodyStr, expectBody)
+    tracker.stop()
+  })
+})
+
+test('tracker will emit reqResponseMismatch when response does not match expectResponse', (t) => {
+  t.plan(1)
+
+  const responseBody = 'hello world'
+  const server = helper.startServer({ body: responseBody })
+
+  const tracker = run({
+    url: `http://localhost:${server.address().port}`,
+    connections: 10,
+    duration: 15,
+    method: 'GET',
+    body: 'hello',
+    expectResponse: ({ body }) => body === 'goodbye world'
+  })
+
+  tracker.once('reqResponseMismatch', ({ body }) => {
+    t.equal(body, 'hello world')
     tracker.stop()
   })
 })

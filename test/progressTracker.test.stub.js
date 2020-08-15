@@ -58,6 +58,18 @@ test('should log mismatches', t => {
     expectBody: 'modified'
   }, console.log)
 
+test('should log response mismatches', (t) => {
+  const server = helper.startServer()
+  const instance = autocannon(
+    {
+      url: `http://localhost:${server.address().port}`,
+      pipelining: 1,
+      amount: 10,
+      expectResponse: ({ body }) => body === 'modified'
+    },
+    console.log
+  )
+
   setTimeout(() => {
     instance.stop()
     t.end()

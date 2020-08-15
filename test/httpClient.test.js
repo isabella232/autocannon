@@ -713,6 +713,32 @@ test('client emits mistmatch when expectBody doesn\'t match actual body', (t) =>
   })
 })
 
+test("client emits responseMismatch when expectResponse doesn't match actual response", (t) => {
+  const responses = ['hello...', 'world!']
+  const server = helper.startServer({
+    body: ({ method }) => responses[method === 'POST' ? 0 : 1]
+  })
+  const opts = server.address()
+  opts.requests = [
+    {
+      method: 'POST',
+      body: 'hi there!'
+    },
+    {
+      method: 'GET'
+    }
+  ]
+  opts.expectResponse = ({ body }) => body === 'hello...'
+
+  const client = new Client(opts)
+  client.on('responseMismatch', ({ body }) => {
+    // we expect a response mismatch on second request
+    t.same(body, responses[1])
+    client.destroy()
+    t.end()
+  })
+})
+
 test('client invokes appropriate onResponse when using pipelining', (t) => {
   const server = helper.startServer({
     body: ({ method }) => method
